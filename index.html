@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Blackjack 21</title>
+    
+    <!-- Твой шрифт -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        /* ВОТ ТУТ ТВОЙ ФОН И ШРИФТ */
+        body {
+            background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.95)), url('https://i.postimg.cc/sDfbb862/IMG-5043.png') no-repeat center center/cover;
+            color: white; 
+            font-family: 'Playfair Display', serif; 
+            height: 100vh;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center;
+            justify-content: center; 
+            text-align: center; 
+            overflow: hidden;
+        }
+
+        #menu-screen { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: space-between; 
+            height: 100%; 
+            width: 100%; 
+            padding: 40px 20px; 
+        }
+        
+        .header h1 { font-size: 42px; letter-spacing: 2px; margin-bottom: 5px; text-transform: uppercase; }
+        .header p { font-size: 16px; color: #ccc; }
+        .balance { font-size: 20px; margin-top: 30px; letter-spacing: 1px; }
+        
+        .bets { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 20px; 
+            width: 100%; 
+            max-width: 300px; 
+            margin: 40px 0; 
+        }
+        
+        .bet-btn {
+            background: transparent; 
+            border: 2px solid rgba(255,255,255,0.2); 
+            color: white;
+            font-family: 'Playfair Display', serif; 
+            font-size: 32px; 
+            padding: 15px 0;
+            border-radius: 10px; 
+            cursor: pointer; 
+            transition: all 0.2s ease; 
+            position: relative; 
+            z-index: 10;
+        }
+        
+        .bet-btn.active { 
+            border-color: #4ade80; 
+            box-shadow: 0 0 15px rgba(74, 222, 128, 0.4); 
+            color: #4ade80; 
+        }
+        
+        .play-btn { 
+            background: transparent; 
+            border: none; 
+            color: #4ade80; 
+            font-family: 'Playfair Display', serif; 
+            font-size: 48px; 
+            letter-spacing: 4px; 
+            text-transform: uppercase; 
+            cursor: pointer; 
+            margin-bottom: 20px; 
+            text-shadow: 0 0 10px rgba(74, 222, 128, 0.5); 
+            position: relative; 
+            z-index: 10; 
+        }
+        
+        .settings-btn { 
+            position: absolute; 
+            bottom: 20px; 
+            left: 20px; 
+            font-size: 30px; 
+            cursor: pointer; 
+            z-index: 10; 
+        }
+
+        /* ЭКРАН ИГРЫ (он скрыт по умолчанию) */
+        #game-screen { display: none; flex-direction: column; justify-content: space-between; height: 100%; width: 100%; padding: 20px; background: rgba(0, 0, 0, 0.85); position: absolute; top: 0; left: 0; z-index: 50; }
+        .cards-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; gap: 20px; }
+        .hand { display: flex; justify-content: center; gap: 10px; margin: 10px 0; }
+        .card { background: white; color: black; border-radius: 8px; padding: 10px 15px; font-size: 24px; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .score { font-size: 24px; color: #4ade80; margin-top: 10px; }
+        .game-controls { display: flex; justify-content: space-around; width: 100%; margin-bottom: 20px; }
+        .action-btn { background: rgba(0,0,0,0.6); border: 2px solid #4ade80; color: #4ade80; padding: 15px 30px; font-size: 20px; border-radius: 10px; font-family: 'Playfair Display', serif; cursor: pointer; }
+        .action-btn:active { background: #4ade80; color: black; }
+        .result-text { font-size: 28px; margin-top: 20px; text-shadow: 0 0 10px rgba(255,255,255,0.5); }
+
+        /* МОДАЛЬНОЕ ОКНО */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 100; opacity: 0; transition: opacity 0.3s ease; }
+        .modal-overlay.show { display: flex; opacity: 1; }
+        .modal-content { background: #111; border: 1px solid #333; border-radius: 15px; padding: 30px 20px; width: 90%; max-width: 350px; position: relative; }
+        .close-btn { position: absolute; top: 10px; right: 15px; font-size: 24px; color: #888; cursor: pointer; }
+        .modal-btn { display: block; width: 100%; background: transparent; border: 1px solid rgba(255,255,255,0.2); color: white; font-family: 'Playfair Display', serif; font-size: 20px; padding: 15px; margin-bottom: 15px; border-radius: 8px; cursor: pointer; text-align: left; }
+    </style>
+</head>
+<body>
+
+    <div id="menu-screen">
+        <div class="header">
+            <h1>BLACKJACK</h1>
+            <p>Карточная игра 21</p>
+            <div class="balance" id="user-balance">БАЛАНС: 1000</div>
+        </div>
+        <div class="bets">
+            <button class="bet-btn active" onclick="selectBet(this, 50)">50</button>
+            <button class="bet-btn" onclick="selectBet(this, 100)">100</button>
+            <button class="bet-btn" onclick="selectBet(this, 300)">300</button>
+            <button class="bet-btn" onclick="selectBet(this, 500)">500</button>
+        </div>
+        <button class="play-btn" onclick="startGame()">ИГРАТЬ</button>
+        <div class="settings-btn" onclick="openSettings()">⚙️</div>
+    </div>
+
+    <!-- Экран игры -->
+    <div id="game-screen">
+        <div class="cards-area">
+            <div>
+                <div>Дилер</div>
+                <div class="hand" id="dealer-hand"></div>
+                <div class="score" id="dealer-score"></div>
+            </div>
+            <div class="result-text" id="result-text"></div>
+            <div>
+                <div>Твои карты</div>
+                <div class="hand" id="player-hand"></div>
+                <div class="score" id="player-score"></div>
+            </div>
+        </div>
+        <div class="game-controls" id="game-controls">
+            <button class="action-btn" onclick="hit()">Ещё карта</button>
+            <button class="action-btn" onclick="stand()">Стоп</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-content">
+            <div class="close-btn" onclick="closeSettings()">✕</div>
+            <button class="modal-btn" onclick="modalAction('deposit')">Пополнить баланс <span>💳</span></button>
+            <button class="modal-btn" onclick="modalAction('history')">История игр <span>📜</span></button>
+            <button class="modal-btn" onclick="modalAction('rules')">Правила <span>📖</span></button>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        if (tg) tg.expand();
+
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioContext();
+        function playClickSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.05);
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+            oscillator.connect(gainNode); gainNode.connect(audioCtx.destination);
+            oscillator.start(); oscillator.stop(audioCtx.currentTime + 0.05);
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+        }
+
+        let balance = 1000;
+        let currentBet = 50;
+        let playerHand = [];
+        let dealerHand = [];
+
+        function updateBalance() {
+            document.getElementById('user-balance').innerText = 'БАЛАНС: ' + balance;
+        }
+
+        function selectBet(btnElement, amount) {
+            playClickSound();
+            currentBet = amount;
+            document.querySelectorAll('.bet-btn').forEach(btn => btn.classList.remove('active'));
+            btnElement.classList.add('active');
+        }
+
+        function drawCard() {
+            const cards = [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 11];
+            return cards[Math.floor(Math.random() * cards.length)];
+        }
+
+        function calculateScore(hand) {
+            let score = hand.reduce((a, b) => a + b, 0);
+            let aces = hand.filter(x => x === 11).length;
+            while (score > 21 && aces > 0) { score -= 10; aces--; }
+            return score;
+        }
+
+        function renderCards() {
+            document.getElementById('player-hand').innerHTML = playerHand.map(c => `<div class="card">${c}</div>`).join('');
+            document.getElementById('player-score').innerText = 'Сумма: ' + calculateScore(playerHand);
+            
+            if (document.getElementById('game-controls').style.display !== 'none') {
+                let hiddenHand = ['?', ...dealerHand.slice(1)];
+                document.getElementById('dealer-hand').innerHTML = hiddenHand.map(c => `<div class="card">${c}</div>`).join('');
+                document.getElementById('dealer-score').innerText = '';
+            } else {
+                document.getElementById('dealer-hand').innerHTML = dealerHand.map(c => `<div class="card">${c}</div>`).join('');
+                document.getElementById('dealer-score').innerText = 'Сумма: ' + calculateScore(dealerHand);
+            }
+        }
+
+        function startGame() {
+            playClickSound();
+            if (balance < currentBet) { alert("Недостаточно средств!"); return; }
+            
+            balance -= currentBet;
+            updateBalance();
+
+            playerHand = [drawCard(), drawCard()];
+            dealerHand = [drawCard(), drawCard()];
+
+            document.getElementById('menu-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'flex';
+            document.getElementById('game-controls').style.display = 'flex';
+            document.getElementById('result-text').innerText = '';
+
+            renderCards();
+        }
+
+        function hit() {
+            playClickSound();
+            playerHand.push(drawCard());
+            renderCards();
+            if (calculateScore(playerHand) > 21) {
+                endGame("Перебор! Вы проиграли.", false);
+            }
+        }
+
+        function stand() {
+            playClickSound();
+            document.getElementById('game-controls').style.display = 'none';
+            
+            while (calculateScore(dealerHand) < 17) {
+                dealerHand.push(drawCard());
+            }
+            renderCards();
+            checkWinner();
+        }
+
+        function checkWinner() {
+            let pScore = calculateScore(playerHand);
+            let dScore = calculateScore(dealerHand);
+
+            if (dScore > 21 || pScore > dScore) {
+                endGame("Ты выиграл!", true);
+            } else if (pScore < dScore) {
+                endGame("Ты проиграл.", false);
+            } else {
+                endGame("Ничья.", null);
+            }
+        }
+
+        function endGame(message, isWin) {
+            document.getElementById('result-text').innerText = message;
+            document.getElementById('game-controls').style.display = 'none';
+
+            if (isWin === true) {
+                balance += currentBet * 2;
+            } else if (isWin === null) {
+                balance += currentBet;
+            }
+            updateBalance();
+
+            setTimeout(() => {
+                document.getElementById('game-screen').style.display = 'none';
+                document.getElementById('menu-screen').style.display = 'flex';
+            }, 3000);
+        } 
+
+        function openSettings() { playClickSound(); document.getElementById('settingsModal').classList.add('show'); }
+        function closeSettings() { playClickSound(); document.getElementById('settingsModal').classList.remove('show'); }
+        function modalAction(action) { playClickSound(); closeSettings(); }
+    </script>
+</body>
+</html>
